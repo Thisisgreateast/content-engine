@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.next/
+
+# environment
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# build
+out/
+dist/
+build/
+
+# logs
+*.log
+npm-debug.log*
+
+# vercel
+.vercel
