@@ -25,6 +25,25 @@ CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id
 CREATE INDEX IF NOT EXISTS idx_users_plan ON users(plan);
 
 -- =============================================
+-- Table: clients (for Agency tier)
+-- Agency users can manage multiple client accounts
+-- =============================================
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agency_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  business_name TEXT NOT NULL,
+  industry TEXT NOT NULL DEFAULT '',
+  target_audience TEXT NOT NULL DEFAULT '',
+  brand_voice TEXT NOT NULL DEFAULT 'professional',
+  platforms TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for clients
+CREATE INDEX IF NOT EXISTS idx_clients_agency_user ON clients(agency_user_id);
+
+-- =============================================
 -- Table: generated_posts
 -- Stores AI-generated social media posts
 -- =============================================
@@ -50,25 +69,6 @@ CREATE INDEX IF NOT EXISTS idx_posts_platform ON generated_posts(platform);
 CREATE INDEX IF NOT EXISTS idx_posts_status ON generated_posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_day ON generated_posts(day_of_week);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON generated_posts(created_at DESC);
-
--- =============================================
--- Table: clients (for Agency tier)
--- Agency users can manage multiple client accounts
--- =============================================
-CREATE TABLE IF NOT EXISTS clients (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agency_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  business_name TEXT NOT NULL,
-  industry TEXT NOT NULL DEFAULT '',
-  target_audience TEXT NOT NULL DEFAULT '',
-  brand_voice TEXT NOT NULL DEFAULT 'professional',
-  platforms TEXT[] NOT NULL DEFAULT '{}',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Indexes for clients
-CREATE INDEX IF NOT EXISTS idx_clients_agency_user ON clients(agency_user_id);
 
 -- =============================================
 -- Table: edit_history
