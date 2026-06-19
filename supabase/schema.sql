@@ -115,6 +115,33 @@ ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE edit_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE token_usage ENABLE ROW LEVEL SECURITY;
 
+-- Clean up existing policies to avoid "already exists" errors on re-run
+DO $$ 
+BEGIN
+    -- Users policies
+    DROP POLICY IF EXISTS "Users can read own data" ON users;
+    DROP POLICY IF EXISTS "Users can update own data" ON users;
+    
+    -- Posts policies
+    DROP POLICY IF EXISTS "Users can read own posts" ON generated_posts;
+    DROP POLICY IF EXISTS "Users can insert own posts" ON generated_posts;
+    DROP POLICY IF EXISTS "Users can update own posts" ON generated_posts;
+    DROP POLICY IF EXISTS "Users can delete own posts" ON generated_posts;
+    
+    -- Clients policies
+    DROP POLICY IF EXISTS "Agency users can read own clients" ON clients;
+    DROP POLICY IF EXISTS "Agency users can insert clients" ON clients;
+    DROP POLICY IF EXISTS "Agency users can update clients" ON clients;
+    DROP POLICY IF EXISTS "Agency users can delete clients" ON clients;
+    
+    -- Edit history policies
+    DROP POLICY IF EXISTS "Users can read own edit history" ON edit_history;
+    DROP POLICY IF EXISTS "Users can insert edit history" ON edit_history;
+    
+    -- Token usage policies
+    DROP POLICY IF EXISTS "Users can read own token usage" ON token_usage;
+END $$;
+
 -- Users can only read/update their own data
 CREATE POLICY "Users can read own data" ON users
   FOR SELECT USING (auth.uid() = id);
@@ -171,6 +198,11 @@ BEGIN
   RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Drop triggers if they exist to avoid errors
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_posts_updated_at ON generated_posts;
+DROP TRIGGER IF EXISTS update_clients_updated_at ON clients;
 
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON users
