@@ -128,10 +128,7 @@ export default function Home() {
     setError("");
     const { error } = await supabase.auth.signUp({ 
       email, 
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/onboarding`
-      }
+      password
     });
     if (error) {
       setError(error.message);
@@ -149,10 +146,7 @@ export default function Home() {
     const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
     const { error } = await supabase.auth.signUp({ 
       email, 
-      password: randomPassword,
-      options: {
-        emailRedirectTo: `${window.location.origin}/onboarding`
-      }
+      password: randomPassword
     });
     if (error) {
       setError(error.message);
