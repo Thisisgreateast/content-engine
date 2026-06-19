@@ -190,7 +190,24 @@ CREATE POLICY "Users can read own token usage" ON token_usage
 -- Functions and Triggers
 -- =============================================
 
--- Auto-update the updated_at timestamp
+-- 1. Sync auth.users to public.users
+-- This ensures that when a user signs up, a row is automatically 
+-- created in the public.users table.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $
+BEGIN
+  INSERT INTO public.users (id, business_name)
+  VALUES (NEW.id, '');
+  RETURN NEW;
+END;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 2. Auto-update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN

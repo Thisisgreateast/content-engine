@@ -22,11 +22,28 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabase();
 
     // Verify the user exists in Supabase
-    const { data: user, error: userError } = await supabase
+    let { data: user, error: userError } = await supabase
       .from("users")
       .select("id, stripe_customer_id")
       .eq("id", userId)
       .single();
+
+    // Fallback: If user not found in public.users, create the profile on the fly
+    if (userError && userError.code === "PGRST116") {
+      console.log("User profile not found in public.users, creating it now...");
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert({ id: userId, business_name: businessName || "" })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error("Failed to create user profile:", createError);
+      } else {
+        user = newUser;
+        userError = null;
+      }
+    }
 
     if (userError && userError.code !== "PGRST116") {
       console.error("Error fetching user:", userError);
