@@ -126,12 +126,20 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    
+    // Explicitly determine the redirect URL to ensure it matches Supabase whitelist
+    const redirectTo = `${window.location.origin}/onboarding`;
+    
     const { error } = await supabase.auth.signUp({ 
       email, 
-      password
+      password,
+      options: {
+        emailRedirectTo: redirectTo
+      }
     });
+    
     if (error) {
-      setError(error.message);
+      setError(`Auth Error: ${error.message}`);
       setLoading(false);
     } else {
       router.push("/onboarding");
@@ -142,14 +150,21 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    // Auto-generate a secure random password
+    
+    // Explicitly determine the redirect URL to ensure it matches Supabase whitelist
+    const redirectTo = `${window.location.origin}/onboarding`;
+    
     const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
     const { error } = await supabase.auth.signUp({ 
       email, 
-      password: randomPassword
+      password: randomPassword,
+      options: {
+        emailRedirectTo: redirectTo
+      }
     });
+    
     if (error) {
-      setError(error.message);
+      setError(`Trial Error: ${error.message}`);
       setLoading(false);
     } else {
       router.push("/onboarding");
