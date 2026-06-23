@@ -35,11 +35,14 @@ export function getSupabase(): SupabaseClient {
  */
 export function getServiceSupabase(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
   if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL must be configured.");
+    throw new Error("SUPABASE_URL is missing in environment variables.");
+  }
+  
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing. Admin operations will fail.");
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
