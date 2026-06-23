@@ -128,13 +128,26 @@ export default function Home() {
     setError("");
     
     try {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password
+      // 1. Call server-side signup to bypass redirect issues
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
       
-      if (error) {
-        setError(`Auth Error: ${error.message}`);
+      const payload = await res.json();
+      
+      if (!res.ok) {
+        setError(`Signup Error: ${payload.error}`);
+        setLoading(false);
+        return;
+      }
+      
+      // 2. Sign in client-side immediately
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (signInError) {
+        setError(`Sign In Error: ${signInError.message}`);
         setLoading(false);
       } else {
         router.push("/onboarding");
@@ -152,13 +165,27 @@ export default function Home() {
     
     try {
       const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password: randomPassword
+      
+      // 1. Call server-side signup
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: randomPassword }),
       });
       
-      if (error) {
-        setError(`Trial Error: ${error.message}`);
+      const payload = await res.json();
+      
+      if (!res.ok) {
+        setError(`Trial Signup Error: ${payload.error}`);
+        setLoading(false);
+        return;
+      }
+      
+      // 2. Sign in client-side
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: randomPassword });
+      
+      if (signInError) {
+        setError(`Trial Sign In Error: ${signInError.message}`);
         setLoading(false);
       } else {
         router.push("/onboarding");
