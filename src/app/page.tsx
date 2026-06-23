@@ -127,22 +127,21 @@ export default function Home() {
     setLoading(true);
     setError("");
     
-    // Explicitly determine the redirect URL to ensure it matches Supabase whitelist
-    const redirectTo = `${window.location.origin}/onboarding`;
-    
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: {
-        emailRedirectTo: redirectTo
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password
+      });
+      
+      if (error) {
+        setError(`Auth Error: ${error.message}`);
+        setLoading(false);
+      } else {
+        router.push("/onboarding");
       }
-    });
-    
-    if (error) {
-      setError(`Auth Error: ${error.message}`);
+    } catch (err: any) {
+      setError(`Unexpected Error: ${err.message}`);
       setLoading(false);
-    } else {
-      router.push("/onboarding");
     }
   };
 
@@ -151,23 +150,22 @@ export default function Home() {
     setLoading(true);
     setError("");
     
-    // Explicitly determine the redirect URL to ensure it matches Supabase whitelist
-    const redirectTo = `${window.location.origin}/onboarding`;
-    
-    const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password: randomPassword,
-      options: {
-        emailRedirectTo: redirectTo
+    try {
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password: randomPassword
+      });
+      
+      if (error) {
+        setError(`Trial Error: ${error.message}`);
+        setLoading(false);
+      } else {
+        router.push("/onboarding");
       }
-    });
-    
-    if (error) {
-      setError(`Trial Error: ${error.message}`);
+    } catch (err: any) {
+      setError(`Unexpected Error: ${err.message}`);
       setLoading(false);
-    } else {
-      router.push("/onboarding");
     }
   };
 
