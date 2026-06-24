@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServiceSupabase } from "@/lib/supabase";
 
 /**
  * POST /api/auth/signup
- * Server-side signup using Service Role to bypass redirect whitelist checks.
- * This route is the definitive fix for the "Invalid path specified in request URL" error.
+ * Nuclear Fix: Uses raw fetch to the Supabase API to bypass all library-level
+ * redirect validation and whitelist checks.
  */
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: "Server configuration missing: SUPABASE_URL or SERVICE_ROLE_KEY" },
+        { status: 500 }
+      );
+    }
 
     if (!email || !password) {
       return NextResponse.json(
@@ -17,30 +26,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getServiceSupabase();
-
-    // Create user using Admin API - this explicitly bypasses redirect validation
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm the user immediately
+    // Direct HTTP call to Supabase Admin API
+    // This bypasses the JS library which often injects unwanted redirect params
+    const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": serviceRoleKey,
+        "Authorization": `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { source: "one_click_trial" }
+      }),
     });
 
-    if (error) {
-      // If user already exists, we treat it as success (they'll just sign in)
-      if (error.message.includes("already registered")) {
-        return NextResponse.json({ success: true, message: "User already exists" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Handle the case where user already exists
+      if (data.msg?.includes("already registered") || data.message?.includes("already exists")) {
+         return NextResponse.json({ success: true, message: "User exists, proceed to login" });
       }
       
-      console.error("Admin Signup Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error("Raw Signup Error:", data);
+      return NextResponse.json({ error: data.msg || data.message || "Signup failed" }, { status: response.status });
     }
 
-    return NextResponse.json({ success: true, user: data.user });
+    return NextResponse.json({ success: true, user: data });
   } catch (error: any) {
     console.error("Critical API Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error during signup" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }
