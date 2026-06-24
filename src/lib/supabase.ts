@@ -34,8 +34,10 @@ export function getSupabase(): SupabaseClient {
  * Uses the service role key for admin operations.
  */
 export function getServiceSupabase(): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+  // Ensure we trim any accidental whitespace or quotes from the service role key
+  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "";
+  const serviceRoleKey = rawKey.trim().replace(/^["']|["']$/g, "");
 
   if (!supabaseUrl) {
     throw new Error("SUPABASE_URL is missing in environment variables.");
