@@ -54,14 +54,69 @@ export function useDashboardData(clientId?: string | null) {
       const { data: postsData, error: postsError } = await query;
 
       if (postsError) throw postsError;
-      setPosts(postsData || []);
+      const fetchedPosts = postsData || [];
+      setPosts(fetchedPosts);
+
+      // AUTO-GENERATION LOGIC:
+      // If the user has a plan, but zero posts exist, trigger the first generation automatically.
+      if (fetchedPosts.length === 0 && userData.plan && !isGenerating) {
+        console.log("Zero posts detected with active plan. Triggering first generation...");
+        // We can't call generateNextWeek directly here because it depends on state that might not be set yet.
+        // But we have the data right here.
+        triggerFirstGeneration(userData, clientId);
+      }
     } catch (err: any) {
       console.error("Dashboard Data Fetch Error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, isGenerating]);
+
+  // Internal helper for auto-generation
+  const triggerFirstGeneration = async (profile: UserProfile, cId?: string | null) => {
+    setIsGenerating(true);
+    try {
+      const genRequest: GenerateRequest = {
+        business_name: profile.business_name,
+        industry: profile.industry,
+        audience: profile.target_audience,
+        brand_voice: profile.brand_voice,
+        platforms: profile.platforms,
+        previous_edits: []
+      };
+
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...genRequest, user_id: profile.id }),
+      });
+
+      if (response.ok) {
+        const result: GenerateResponse = await response.json();
+        const supabase = getSupabase();
+        const postsToInsert = result.posts.map(p => ({
+          ...p,
+          user_id: profile.id,
+          client_id: cId || null,
+          created_at: new Date().toISOString()
+        }));
+
+        const { data: insertedPosts } = await supabase
+          .from("generated_posts")
+          .insert(postsToInsert)
+          .select();
+
+        if (insertedPosts) {
+          setPosts(prev => [...insertedPosts, ...prev]);
+        }
+      }
+    } catch (e) {
+      console.error("Auto-generation failed:", e);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     fetchUserAndPosts();
