@@ -3,20 +3,30 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 let supabaseInstance: SupabaseClient | null = null;
 
 /**
- * Get the Supabase client. Uses lazy initialization so it works
- * during build time when env vars may not be available.
- * Always use this function instead of importing supabase directly.
+ * Sanitizes the Supabase URL to prevent "Invalid Path" errors.
+ * Removes trailing slashes and accidental /auth/v1 suffixes.
+ */
+function sanitizeUrl(url: string) {
+  return url
+    .trim()
+    .replace(/\/+$/, "") // Remove trailing slashes
+    .replace(/\/auth\/v1$/, ""); // Remove accidental auth suffix
+}
+
+/**
+ * Get the Supabase client.
  */
 export function getSupabase(): SupabaseClient {
   if (supabaseInstance) return supabaseInstance;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+  
+  const supabaseUrl = sanitizeUrl(rawUrl);
+  const supabaseAnonKey = rawKey.trim().replace(/^["']|["']$/g, "");
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Supabase URL and Anon Key must be configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file."
-    );
+    throw new Error("Supabase URL and Anon Key must be configured.");
   }
 
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
@@ -31,20 +41,20 @@ export function getSupabase(): SupabaseClient {
 
 /**
  * Get the authenticated Supabase client for server-side operations.
- * Uses the service role key for admin operations.
  */
 export function getServiceSupabase(): SupabaseClient {
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
-  // Ensure we trim any accidental whitespace or quotes from the service role key
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "";
+  
+  const supabaseUrl = sanitizeUrl(rawUrl);
   const serviceRoleKey = rawKey.trim().replace(/^["']|["']$/g, "");
 
   if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL is missing in environment variables.");
+    throw new Error("SUPABASE_URL is missing.");
   }
   
   if (!serviceRoleKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing. Admin operations will fail.");
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing.");
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
