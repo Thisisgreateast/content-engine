@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getSupabase } from "@/lib/supabase";
 import {
   BRAND_VOICE_DESCRIPTIONS,
   INDUSTRIES,
@@ -23,6 +24,7 @@ type OnboardingState = {
   platforms: Platform[];
   plan: Plan;
   email: string;
+  userId: string;
 };
 
 const STEP_LABELS = [
@@ -101,6 +103,7 @@ export default function OnboardingPage() {
   const [isYearly, setIsYearly] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const supabase = getSupabase();
 
   const [form, setForm] = useState<OnboardingState>({
     businessName: "",
@@ -111,7 +114,29 @@ export default function OnboardingPage() {
     platforms: ["linkedin", "instagram"],
     plan: "pro",
     email: "",
+    userId: "",
   });
+
+  // Load Auth User on Mount
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setForm(prev => ({
+          ...prev,
+          userId: user.id,
+          email: user.email || prev.email
+        }));
+      } else {
+        // Fallback for non-auth users (legacy or direct entry)
+        const existingId = localStorage.getItem("contentengine_user_id");
+        if (existingId) {
+          setForm(prev => ({ ...prev, userId: existingId }));
+        }
+      }
+    };
+    checkUser();
+  }, [supabase]);
 
   const selectedPlan = PRODUCT_CONFIGS[form.plan];
 
@@ -200,17 +225,20 @@ export default function OnboardingPage() {
     setCheckoutError(null);
 
     try {
-      const existingId = localStorage.getItem("contentengine_user_id");
-      const generatedId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : Date.now().toString(36);
-      const userId = existingId ?? `user_${generatedId}`;
+      let finalUserId = form.userId;
+      
+      if (!finalUserId) {
+        const generatedId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : Date.now().toString(36);
+        finalUserId = `user_${generatedId}`;
+      }
 
-      localStorage.setItem("contentengine_user_id", userId);
+      localStorage.setItem("contentengine_user_id", finalUserId);
       localStorage.setItem(
         "contentengine_onboarding",
-        JSON.stringify({ ...form, isYearly, updatedAt: new Date().toISOString() }),
+        JSON.stringify({ ...form, userId: finalUserId, isYearly, updatedAt: new Date().toISOString() }),
       );
 
       const priceId = isYearly
@@ -221,7 +249,7 @@ export default function OnboardingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
+          userId: finalUserId,
           priceId,
           email: form.email.trim(),
           businessName: form.businessName,

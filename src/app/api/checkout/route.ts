@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { getSupabase } from "@/lib/supabase";
+import { getServiceSupabase } from "@/lib/supabase";
 import { PRODUCT_CONFIGS, Plan } from "@/types";
 
 /**
  * POST /api/checkout
  * Creates a Stripe Checkout Session for subscription
+ * Uses service role to ensure user profile existence.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    // Use Service Role (Admin) to handle user profile creation bypass RLS
+    const supabase = getServiceSupabase();
 
     // Verify the user exists in Supabase
     let { data: user, error: userError } = await supabase
