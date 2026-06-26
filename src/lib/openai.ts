@@ -417,24 +417,29 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-/**
- * Token usage tracker for billing
- */
-const tokenUsageMap = new Map<string, { prompt: number; completion: number }>();
+import { getServiceSupabase } from "./supabase";
 
-export function trackTokenUsage(
+/**
+ * Token usage tracker for billing.
+ * Saves to Supabase using service role to bypass RLS for background tracking.
+ */
+export async function trackTokenUsage(
   userId: string,
   promptTokens: number,
   completionTokens: number
 ) {
-  const current = tokenUsageMap.get(userId) || { prompt: 0, completion: 0 };
-  current.prompt += promptTokens;
-  current.completion += completionTokens;
-  tokenUsageMap.set(userId, current);
-}
-
-export function getUserTokenUsage(userId: string) {
-  return tokenUsageMap.get(userId) || { prompt: 0, completion: 0 };
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from("token_usage").insert({
+      user_id: userId,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: promptTokens + completionTokens,
+      model: "gpt-4o",
+    });
+  } catch (error) {
+    console.error("Failed to persist token usage:", error);
+  }
 }
 
 /**

@@ -103,7 +103,9 @@ export default function OnboardingPage() {
   const [isYearly, setIsYearly] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const supabase = getSupabase();
+  const router = useRouter();
 
   const [form, setForm] = useState<OnboardingState>({
     businessName: "",
@@ -127,16 +129,25 @@ export default function OnboardingPage() {
           userId: user.id,
           email: user.email || prev.email
         }));
+        setAuthLoading(false);
       } else {
-        // Fallback for non-auth users (legacy or direct entry)
-        const existingId = localStorage.getItem("contentengine_user_id");
-        if (existingId) {
-          setForm(prev => ({ ...prev, userId: existingId }));
-        }
+        // If no user found and we're not loading, redirect to home
+        router.push("/");
       }
     };
     checkUser();
-  }, [supabase]);
+  }, [supabase, router]);
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mx-auto" />
+          <p>Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   const selectedPlan = PRODUCT_CONFIGS[form.plan];
 
