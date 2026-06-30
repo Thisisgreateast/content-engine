@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { getSupabase } from "@/lib/supabase";
 import {
   BRAND_VOICE_DESCRIPTIONS,
@@ -99,7 +99,7 @@ function isValidWebsite(value: string) {
   }
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const [step, setStep] = useState<Step>(1);
   const [isYearly, setIsYearly] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -138,17 +138,6 @@ export default function OnboardingPage() {
     };
     checkUser();
   }, [supabase, router]);
-
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mx-auto" />
-          <p>Verifying session...</p>
-        </div>
-      </div>
-    );
-  }
 
   const selectedPlan = PRODUCT_CONFIGS[form.plan];
 
@@ -253,16 +242,11 @@ export default function OnboardingPage() {
         JSON.stringify({ ...form, userId: finalUserId, isYearly, updatedAt: new Date().toISOString() }),
       );
 
-      const priceId = isYearly
-        ? PRODUCT_CONFIGS[form.plan].yearlyPriceId
-        : PRODUCT_CONFIGS[form.plan].monthlyPriceId;
-
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: finalUserId,
-          priceId,
           email: form.email.trim(),
           businessName: form.businessName,
           plan: form.plan,
@@ -287,6 +271,17 @@ export default function OnboardingPage() {
         error instanceof Error ? error.message : "Something went wrong starting checkout.",
       );
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mx-auto" />
+          <p>Verifying session...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -705,5 +700,20 @@ export default function OnboardingPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mx-auto" />
+          <p>Loading wizard...</p>
+        </div>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }
