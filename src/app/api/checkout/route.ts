@@ -20,6 +20,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Safety check for placeholder IDs
+    if (priceId.startsWith("price_") && (priceId.includes("_monthly") || priceId.includes("_yearly"))) {
+      console.error(`BLOCKER: Placeholder Price ID detected: ${priceId}. Real Stripe Price IDs start with 'price_1...'`);
+      return NextResponse.json(
+        { error: `Configuration Error: The Price ID '${priceId}' is a placeholder. You must create this product in Stripe and add the real Price ID (e.g., price_1Q...) to your Vercel Environment Variables.` },
+        { status: 500 }
+      );
+    }
+
     // Use Service Role (Admin) to handle user profile creation bypass RLS
     const supabase = getServiceSupabase();
 

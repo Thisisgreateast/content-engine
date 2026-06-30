@@ -217,8 +217,8 @@ export const PRODUCT_CONFIGS: Record<Plan, ProductConfig> = {
   starter: {
     name: "Starter",
     tier: "starter",
-    monthlyPriceId: "price_starter_monthly",
-    yearlyPriceId: "price_starter_yearly",
+    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTHLY || "price_starter_monthly",
+    yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_YEARLY || "price_starter_yearly",
     monthlyAmount: 29,
     yearlyAmount: 290,
     postsPerWeek: 10,
@@ -234,8 +234,8 @@ export const PRODUCT_CONFIGS: Record<Plan, ProductConfig> = {
   pro: {
     name: "Pro",
     tier: "pro",
-    monthlyPriceId: "price_pro_monthly",
-    yearlyPriceId: "price_pro_yearly",
+    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY || "price_pro_monthly",
+    yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY || "price_pro_yearly",
     monthlyAmount: 79,
     yearlyAmount: 790,
     postsPerWeek: 30,
@@ -252,8 +252,8 @@ export const PRODUCT_CONFIGS: Record<Plan, ProductConfig> = {
   agency: {
     name: "Agency",
     tier: "agency",
-    monthlyPriceId: "price_agency_monthly",
-    yearlyPriceId: "price_agency_yearly",
+    monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_MONTHLY || "price_agency_monthly",
+    yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_AGENCY_YEARLY || "price_agency_yearly",
     monthlyAmount: 199,
     yearlyAmount: 1990,
     postsPerWeek: 999,
