@@ -11,20 +11,26 @@ import { PRODUCT_CONFIGS, Plan } from "@/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { priceId, userId, email, businessName, plan, isYearly } = body;
+    const { userId, email, businessName, plan, isYearly } = body;
 
-    if (!priceId || !userId || !email) {
+    if (!userId || !email || !plan) {
       return NextResponse.json(
-        { error: "Missing required fields: priceId, userId, email" },
+        { error: "Missing required fields: userId, email, plan" },
         { status: 400 }
       );
     }
 
-    // Safety check for placeholder IDs
-    if (priceId.startsWith("price_") && (priceId.includes("_monthly") || priceId.includes("_yearly"))) {
-      console.error(`BLOCKER: Placeholder Price ID detected: ${priceId}. Real Stripe Price IDs start with 'price_1...'`);
+    // Server-side Price ID lookup (more robust than client-side)
+    const envKey = `STRIPE_PRICE_${plan.toUpperCase()}_${isYearly ? 'YEARLY' : 'MONTHLY'}`;
+    const publicEnvKey = `NEXT_PUBLIC_${envKey}`;
+    
+    // Check both standard and NEXT_PUBLIC versions
+    const priceId = process.env[envKey] || process.env[publicEnvKey];
+
+    if (!priceId || priceId.startsWith("price_") && (priceId.includes("_monthly") || priceId.includes("_yearly"))) {
+      console.error(`BLOCKER: Price ID not configured for ${envKey}. Found: ${priceId}`);
       return NextResponse.json(
-        { error: `Configuration Error: The Price ID '${priceId}' is a placeholder. You must create this product in Stripe and add the real Price ID (e.g., price_1Q...) to your Vercel Environment Variables.` },
+        { error: `Configuration Error: The Price ID for ${plan} (${isYearly ? 'yearly' : 'monthly'}) is missing or a placeholder. Please ensure you have added '${envKey}' to your Vercel Environment Variables and REDEPLOYED.` },
         { status: 500 }
       );
     }
