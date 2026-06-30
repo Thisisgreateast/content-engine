@@ -198,7 +198,7 @@ RETURNS TRIGGER AS $
 BEGIN
   INSERT INTO public.users (id, business_name)
   VALUES (NEW.id, '')
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
   RETURN NEW;
 END;
 $ LANGUAGE plpgsql SECURITY DEFINER;

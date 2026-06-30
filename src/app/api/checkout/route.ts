@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         plan: plan || "starter",
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing?canceled=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/onboarding?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: "auto",
       customer_update: {

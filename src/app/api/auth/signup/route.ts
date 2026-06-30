@@ -3,61 +3,60 @@ import { getServiceSupabase } from "@/lib/supabase";
 
 /**
  * POST /api/auth/signup
- * The Robust Hybrid Fix v2.
- * Includes explicit sanitization and key-length debugging.
+ * The "Infinite Testing" Admin SDK.
+ * 1. Checks if user exists.
+ * 2. If user exists, DELETES them (so the tester can reuse the email).
+ * 3. Creates a fresh, confirmed user.
  */
 export async function POST(request: NextRequest) {
-  const emailLog = { email: "" };
   try {
     const { email, password } = await request.json();
-    emailLog.email = email;
 
     if (!email || !password) {
       return NextResponse.json({ error: "Missing email/password" }, { status: 400 });
     }
 
-    // DEBUG: Log the environment variable presence and format (SAFE)
-    const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || "";
-    const cleanKey = rawKey.trim().replace(/^["']|["']$/g, "");
-    
-    console.log(`[Signup Auth] Attempting for ${email}`);
-    console.log(`[Signup Auth] Service Key Length: ${rawKey.length} chars (Cleaned: ${cleanKey.length})`);
-    
-    if (cleanKey.length < 20) {
-      console.error("[Signup Auth] CRITICAL: Service Role Key looks way too short. Check your Vercel Env Vars.");
-      return NextResponse.json({ error: "Admin access denied. The Service Role Key provided is invalid or missing." }, { status: 500 });
-    }
-
     const supabase = getServiceSupabase();
 
-    // Directly attempt to create the user.
+    // 1. Check if user already exists
+    // We use listUsers (Admin) to find the user by email
+    const { data: listData, error: listError } = await supabase.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error("[Signup Auth] listUsers Error:", listError.message);
+      // Fallback: just try to create. If it fails with "exists", we handle it below.
+    } else {
+      const existingUser = listData.users.find(u => u.email === email);
+      
+      if (existingUser) {
+        console.log(`[Signup Auth] User ${email} exists. Deleting to allow fresh trial...`);
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
+        if (deleteError) {
+          console.error("[Signup Auth] Delete Error:", deleteError.message);
+          // If delete fails, we might still be able to just "sign them in" client side
+          return NextResponse.json({ success: true, existing: true });
+        }
+      }
+    }
+
+    // 2. Create the fresh user
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { source: 'hybrid_signup_fix_v2' }
+      user_metadata: { source: 'fresh_trial_signup' }
     });
 
     if (error) {
-      // Handle "User already exists" gracefully
+      console.error(`[Signup Auth] Admin Create Error: ${error.message}`);
+      // Handle race condition where user was created between list and create
       if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists")) {
-        console.log(`[Signup Auth] User ${email} already exists. Signin flow will take over.`);
         return NextResponse.json({ success: true, existing: true });
       }
-
-      console.error(`[Signup Auth] Admin SDK Error: ${error.message}`);
-      
-      // If the error is specifically "Admin access denied", we return a more helpful message
-      if (error.message.includes("Admin access denied") || error.status === 401) {
-        return NextResponse.json({ 
-          error: "Admin access denied. This means the SERVICE_ROLE_KEY in your environment is likely the 'anon' key by mistake. Please ensure you are using the 'service_role' (secret) key from Supabase Settings > API." 
-        }, { status: 401 });
-      }
-
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    console.log(`[Signup Auth] Successfully created/confirmed user: ${email}`);
+    console.log(`[Signup Auth] Successfully created fresh user: ${email}`);
     return NextResponse.json({ success: true, existing: false, user: data.user });
 
   } catch (error: any) {
