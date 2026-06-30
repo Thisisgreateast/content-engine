@@ -66,7 +66,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Build the system prompt
+    // 2. Moderation Step: Check for prohibited content
+    try {
+      const moderation = await openai.moderations.create({
+        input: `${business_name} ${industry} ${audience}`,
+      });
+
+      if (moderation.results[0].flagged) {
+        console.warn(`[Moderation] Request flagged for user ${user_id || 'unknown'}:`, moderation.results[0].categories);
+        return NextResponse.json(
+          {
+            error: "Content violation: Your business details contain language that violates our safety guidelines. Please adjust your brand profile.",
+          },
+          { status: 400 }
+        );
+      }
+    } catch (modError) {
+      console.error("Moderation API failed (non-blocking):", modError);
+      // We continue even if moderation fails to avoid breaking the app, 
+      // but you may want to make this blocking later.
+    }
+
+    // 3. Build the system prompt
     const systemPrompt = buildSystemPrompt({
       business_name,
       industry,
